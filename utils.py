@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from PySide2.QtGui import QImage
+from PyQt5.QtGui import QImage
 
 
 def cv_image_to_qimg(img: np.ndarray):
