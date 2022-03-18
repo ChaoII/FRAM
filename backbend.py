@@ -1,19 +1,16 @@
-import datetime
-import os.path
-import time
-import platform
-import psutil
-from typing import List, Optional
-from jetsonface import FaceProcessHelper
-from fastapi import FastAPI, File, UploadFile, HTTPException, status, BackgroundTasks
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from multiprocessing import Process
-import subprocess
-import pandas as pd
+import os
 import uuid
 import ujson
+import datetime
+import platform
+import psutil
+import subprocess
+import pandas as pd
+from typing import List, Optional
+from jetsonface import FaceProcessHelper
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, File, UploadFile, HTTPException, status, BackgroundTasks
 
 # configure region
 app = FastAPI(title="FRAM api")
@@ -21,11 +18,9 @@ app.mount(path="/static", app=StaticFiles(directory="./facelib"), name="static")
 
 fr_obj = FaceProcessHelper("./models/", "./fonts/msyh.ttc", [0, 0])
 face_lib_dir = "./facelib/"
-tmp_json_filename = "tmp.json"
-temp_json_path = os.path.join(face_lib_dir, tmp_json_filename)
 
 face_config_json_path = os.path.join(face_lib_dir, "facelib.json")
-main_pid = 0
+main_pid = -1
 provide_id = False
 
 main_program = "main.py"
@@ -48,14 +43,6 @@ app.add_middleware(
 
 
 # function region
-def check_face_quality(file_name_uuid: str, name: str) -> bool:
-    ujson.dump([{
-        "filename": file_name_uuid + ".jpg",
-        "name": name
-    }], open(temp_json_path, "w", encoding="utf8"))
-    # 执行验证看是否能够计算出结果
-    return fr_obj.create_face_feature_DB_by_json(face_lib_dir, tmp_json_filename)
-
 
 def save_in_json(dst_face_infos: List[dict]):
     if not os.path.exists(face_config_json_path):
@@ -70,7 +57,7 @@ def save_in_json(dst_face_infos: List[dict]):
     final_face_infos = update_info(src_face_infos, dst_face_infos)
 
     with open(face_config_json_path, "w", encoding="utf8") as fw:
-        ujson.dump(final_face_infos, fw)
+        ujson.dump(final_face_infos, fw, ensure_ascii=False)
 
 
 def update_info(src_face_infos: List[dict], dst_face_infos: List[dict]):
@@ -103,13 +90,12 @@ def packing_face_info(id_: str, name_: str, update_time: str):
 
 
 def run_fram():
-    res = subprocess.Popen(f"{python_interpreter} {main_program}",
-                           shell=True,
-                           stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE)
     global main_pid
-    main_pid = res.pid
-    res.wait()
+    p = subprocess.Popen(f"{python_interpreter} {main_program}",
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    main_pid = p.pid
+    p.stderr.read()
 
 
 @app.put("/api/add_face_libs")
@@ -136,17 +122,16 @@ async def add_face_libs(files: List[UploadFile] = File(...)):
             f = await file.read()
             with open(file_path, "wb") as f_:
                 f_.write(f)
+            check_status = fr_obj.face_quality_authorize(file_path)
+            if not check_status:
+                os.remove(file_path)
+                res["message"] = "face quality authorize failed"
         except IOError as e:
             res["message"] = "file open failed ,please check your file so that can be read successful"
             return [res]
-        check_status = check_face_quality(id_, name)
-        if not check_status:
-            os.remove(file_path)
-            os.remove(temp_json_path)
-            res["message"] = "can not find a face"
-        else:
-            dst_face_infos = packing_face_info(id_, name, update_time)
-            save_in_json(dst_face_infos)
+
+        dst_face_infos = packing_face_info(id_, name, update_time)
+        save_in_json(dst_face_infos)
         res_list.append(res)
     return res_list
 
@@ -185,6 +170,7 @@ async def stop_frame():
         if platform.system() == 'Windows':
             p = psutil.Process(main_pid)
             p.terminate()
+            p.wait()
         else:
             os.system("ps aux | grep main.py | awk '{print $2}' | xargs kill -9")
         return {"message": "stop_frame successfully"}

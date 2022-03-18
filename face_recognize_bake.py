@@ -105,60 +105,62 @@ class FaceRecognizeThread(QThread):
                 break
             if self._cap.isOpened():
                 _, frame = self._cap.read()
-                if self._start_tracker:
-                    faces_result = self._fc_obj.face_tracker(frame)
-                    face_nums = len(faces_result)
-                    if face_nums > 0:
-                        labels = []
-                        # 如果数量超过或者时间超过，并且self._record不为空，那么直接发送
-                        if self._record_nums == self._record_freq or time.time() - self._record_last_time > self._record_time:
-                            if len(self._records) != 0:
-                                self.record_attend_signal.emit(self._records)
-                                self._record_nums = 0
-                                self._records = []
-                                self._record_last_time = time.time()
-                                logger.error("发送了********************")
-                        logger.warning("catch top********************")
-                        data = faces_result[0]
-                        logger.critical("catch************************")
-                        face, face_id = data.pos, data.PID
-                        # 如果人脸变化，或者达到规定的ignore_nums帧
-                        logger.error(f"adasd{self._frame_nums}")
-                        if face_id != self._last_id or self._frame_nums == self._ignore_nums:
-                            self._frame_nums = 0
-                            # ----关键点检测----
-                            points = self._fc_obj.face_marker(frame, [face.x, face.y, face.width, face.height])
-                            point_py = [[point.x, point.y] for point in points]
-                            ret = self._fc_obj.face_recognition(frame, point_py)
-                            # -------------信号发送逻辑请在这里编写------------------
-                            # 发送io信号-----该处作为打卡可能不需要了
+                if not self._start_tracker:
+                    qimg = cv_image_to_qimg(crop_image(frame))
+                    self.img_finish_signal.emit(qimg)
+                    continue
+                faces_result = self._fc_obj.face_tracker(frame)
+                face_nums = len(faces_result)
+                if face_nums <= 0:
+                    self.is_person_signal.emit()
 
-                            if ret.confidence < self._threshold:
-                                color = [0, 0, 255]
-                                self.rec_result_signal.emit(["未知", datetime.now().time().strftime("%H:%M:%S"), False])
-                                logger.warning("未知")
-                            else:
-                                self.rec_result_signal.emit(
-                                    [ret.face_info, datetime.now().time().strftime("%H:%M:%S"), True])
-                                color = [0, 255, 0]
-                                attend_info = dict()
-                                attend_info["id"] = ret.face_id
-                                attend_info["name"] = ret.face_info
-                                attend_info["datetime"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S %f")
-                                logger.info(f"打卡成功,打卡人:【{ret.face_info}】")
-                                self._records.append(attend_info)
-                                self._record_nums += 1
-                            label = ret.face_info + str(ret.confidence)[:7]
-                            labels.append(label)
-                        if len(labels) != 0:
-                            self._fc_obj.draw_img(color, labels, [face.x, face.y],
-                                                  [face.x + face.width, face.y + face.height], frame)
-                        self._last_id = face_id
-                        self._frame_nums = self._frame_nums + 1
-                    else:
-                        self.is_person_signal.emit()
-                        logger.error("hide detail***************")
-                    # ----------------------------------------------
+                if self._is_single and face_nums > 1:
+                    logger.warning("当前人数" + "face_nums" + ",目前仅支持单人脸解锁。。。。。。")
+                labels = []
+                # 如果数量超过或者时间超过，并且self._record不为空，那么直接发送
+                if self._record_nums == self._record_freq or time.time() - self._record_last_time > self._record_time:
+                    if len(self._records) != 0:
+                        self.record_attend_signal.emit(self._records)
+                        self._record_nums = 0
+                        self._records = []
+                        self._record_last_time = time.time()
+
+                for i, data in enumerate(faces_result):
+                    face, face_id = data.pos, data.PID
+                    # 如果人脸变化，或者达到规定的ignore_nums帧
+                    if face_id != self._last_id or self._frame_nums == self._ignore_nums:
+                        self._frame_nums = 0
+                        # ----关键点检测----
+                        points = self._fc_obj.face_marker(frame, [face.x, face.y, face.width, face.height])
+                        point_py = [[point.x, point.y] for point in points]
+                        ret = self._fc_obj.face_recognition(frame, point_py)
+                        # -------------信号发送逻辑请在这里编写------------------
+                        # 发送io信号-----该处作为打卡可能不需要了
+
+                        if ret.confidence < self._threshold:
+                            color = [0, 0, 255]
+                            self.rec_result_signal.emit(["未知", datetime.now().time().strftime("%H:%M:%S"), False])
+                        else:
+                            self.rec_result_signal.emit(
+                                [ret.face_info, datetime.now().time().strftime("%H:%M:%S"), True])
+                            color = [0, 255, 0]
+                            attend_info = dict()
+                            attend_info["id"] = ret.face_id
+                            attend_info["name"] = ret.face_info
+                            attend_info["datetime"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S %f")
+                            logger.info(f"打卡成功,打卡人:【{ret.face_info}】")
+                            self._records.append(attend_info)
+                            self._record_nums += 1
+                        print(ret.confidence)
+                        label = ret.face_info + str(ret.confidence)[:7]
+                    labels.append(label)
+                    if len(labels) == 0:
+                        continue
+                    self._fc_obj.draw_img(color, labels, [face.x, face.y],
+                                          [face.x + face.width, face.y + face.height], frame)
+                    self._last_id = face_id
+                self._frame_nums = self._frame_nums + 1
+                # ----------------------------------------------
                 qimg = cv_image_to_qimg(crop_image(frame))
                 self.img_finish_signal.emit(qimg)
         self._cap.release()
