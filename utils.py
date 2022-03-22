@@ -11,7 +11,7 @@ def cv_image_to_qimg(img: np.ndarray):
     return qimg
 
 
-def crop_image(img: np.ndarray, target_size: tuple = (400, 600)):
+def crop_image(img: np.ndarray, target_size: tuple = (360, 640)):
     # 取小的边长为主
     h, w, c = img.shape
     rate_w = w / target_size[0]

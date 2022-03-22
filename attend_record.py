@@ -30,5 +30,6 @@ class AttendRecordThread(QThread):
 
         try:
             df.to_excel(self._file_path)
+            logger.info(f"打卡记录写入文件【{self._file_path}】成功")
         except PermissionError as e:
             logger.error(f"打卡记录写入失败，失败原因：【permission denied，检查文件是否被占用】")

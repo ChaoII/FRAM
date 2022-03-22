@@ -1,6 +1,7 @@
 import os
 import sys
 import PyQt5
+from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 from mainwidget import MyWidget
 from loguru import logger
@@ -13,9 +14,15 @@ os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "jetsonface"))
 
 if __name__ == "__main__":
+    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling)
     app = QtWidgets.QApplication(sys.argv)
+
     widget = MyWidget()
     # widget.resize(300, 200)
     widget.show()
 
     sys.exit(app.exec_())
+
+
+
+

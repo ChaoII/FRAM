@@ -100,7 +100,9 @@ class FaceRecognizeThread(QThread):
 
     @logger.catch
     def run(self) -> None:
+
         while True:
+
             if self._is_stop:
                 break
             if self._cap.isOpened():
@@ -109,7 +111,6 @@ class FaceRecognizeThread(QThread):
                     faces_result = self._fc_obj.face_tracker(frame)
                     face_nums = len(faces_result)
                     if face_nums > 0:
-                        labels = []
                         # 如果数量超过或者时间超过，并且self._record不为空，那么直接发送
                         if self._record_nums == self._record_freq or time.time() - self._record_last_time > self._record_time:
                             if len(self._records) != 0:
@@ -117,13 +118,9 @@ class FaceRecognizeThread(QThread):
                                 self._record_nums = 0
                                 self._records = []
                                 self._record_last_time = time.time()
-                                logger.error("发送了********************")
-                        logger.warning("catch top********************")
                         data = faces_result[0]
-                        logger.critical("catch************************")
                         face, face_id = data.pos, data.PID
                         # 如果人脸变化，或者达到规定的ignore_nums帧
-                        logger.error(f"adasd{self._frame_nums}")
                         if face_id != self._last_id or self._frame_nums == self._ignore_nums:
                             self._frame_nums = 0
                             # ----关键点检测----
@@ -149,15 +146,16 @@ class FaceRecognizeThread(QThread):
                                 self._records.append(attend_info)
                                 self._record_nums += 1
                             label = ret.face_info + str(ret.confidence)[:7]
-                            labels.append(label)
-                        if len(labels) != 0:
-                            self._fc_obj.draw_img(color, labels, [face.x, face.y],
-                                                  [face.x + face.width, face.y + face.height], frame)
+                        try:
+                            self._fc_obj.draw_imgs(color, label, [face.x, face.y],
+                                                   [face.x + face.width, face.y + face.height], frame)
+                        except NameError as e:
+                            # color and label maybe undefined
+                            logger.error(e)
                         self._last_id = face_id
                         self._frame_nums = self._frame_nums + 1
                     else:
                         self.is_person_signal.emit()
-                        logger.error("hide detail***************")
                     # ----------------------------------------------
                 qimg = cv_image_to_qimg(crop_image(frame))
                 self.img_finish_signal.emit(qimg)
