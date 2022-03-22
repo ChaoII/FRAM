@@ -4,7 +4,7 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer
 from PyQt5.QtGui import QImage, QPixmap, QPainter
 from PyQt5 import QtWidgets
-# from GPIO_input import DetectorPersonThread
+# from serial_input import DetectorPersonThread
 from ui.ui_main_widget import Ui_Form
 from face_recognize import FaceRecognizeThread
 from attend_record import AttendRecordThread
@@ -55,8 +55,7 @@ class MyWidget(QtWidgets.QWidget):
     @pyqtSlot(list)
     def delt(self, records: list):
         # calculate filename
-        filename = date.today().strftime("%Y-%m-%d") + ".xls"
-        th = AttendRecordThread(filename, records)
+        th = AttendRecordThread(records)
         th.start()
         th.wait()
 
@@ -103,8 +102,9 @@ class MyWidget(QtWidgets.QWidget):
         self.cur_font_size = self.font_size_rate * self.geometry().height()
         self.ui.label_1.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:#ffffff;")
         self.ui.label_2.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:#ffffff;")
+        self.ui.label_time.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:rgb(85, 85, 85);")
 
-    def on_detective_people(self, ):
+    def on_detective_people(self):
         self.face_rec.start_tracker()
 
     def keyPressEvent(self, a0: QtGui.QKeyEvent) -> None:

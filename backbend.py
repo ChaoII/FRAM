@@ -5,12 +5,13 @@ import datetime
 import platform
 import psutil
 import subprocess
-import pandas as pd
+import sqlite3
 from typing import List, Optional
 from jetsonface import FaceProcessHelper
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException, status, BackgroundTasks
+
 
 # configure region
 app = FastAPI(title="FRAM api")
@@ -98,6 +99,27 @@ def run_fram():
     p.stderr.read()
 
 
+def sql_fetch_json(cursor: sqlite3.Cursor):
+    """
+    Convert the pymysql SELECT result to json format
+    :param cursor:
+    :return:
+    """
+    keys = []
+    for column in cursor.description:
+        keys.append(column[0])
+    key_number = len(keys)
+
+    json_data = []
+    for row in cursor.fetchall():
+        item = dict()
+        for q in range(key_number):
+            item[keys[q]] = row[q]
+        json_data.append(item)
+
+    return json_data
+
+
 @app.put("/api/add_face_libs")
 async def add_face_libs(files: List[UploadFile] = File(...)):
     res_list = []
@@ -139,21 +161,21 @@ async def add_face_libs(files: List[UploadFile] = File(...)):
 @app.get("/api/get_attended_infos")
 async def get_attended_infos(date_time: Optional[str] = None):
     if date_time is None:
-        file_name = datetime.date.today().strftime("%Y-%m-%d") + ".xls"
+        time_ = datetime.date.today().strftime("%Y-%m-%d")
     else:
         date_obj = datetime.datetime.strptime(date_time, "%Y-%m-%d").date()
-        file_name = date_obj.strftime("%Y-%m-%d") + ".xls"
-    file_path = os.path.join("attend", file_name)
+        time_ = date_obj.strftime("%Y-%m-%d")
     res = dict()
     res["result"] = ""
     res["message"] = ""
-
     try:
-        df = pd.read_excel(file_path)
-        attend_info = df.to_dict(orient="records")
+        conn = sqlite3.connect("attend.db")
+        cursor = conn.cursor()
+        cursor.execute(f"select id,name,start_time,end_time from attend where update_time like '%{time_}%'")
+        attend_info = sql_fetch_json(cursor)
         res["result"] = attend_info
     except Exception as e:
-        res["message"] = f"select error, fault detail is {e} "
+        res["message"] = f"query error, fault detail is {e},please try again serval seconds "
     return res
 
 

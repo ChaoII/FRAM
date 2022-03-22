@@ -20,7 +20,7 @@ class FaceRecognizeThread(QThread):
                  face_lib_dir: str = "./facelib",
                  face_lib_configure: str = "facelib.json",
                  face_rec_model="face_recognizer_light.csta",
-                 record_freq=20,
+                 record_freq=5,
                  ignore_nums: int = 40,
                  threshold: int = 0.44,
                  target_size: tuple = (640, 480),
