@@ -23,19 +23,19 @@ class AttendRecordThread(QThread):
             id_ = face_info_["id"]
             name_ = face_info_["name"]
             time_ = face_info_["datetime"]
-            sql = f"select id from attend where id = '{id_}' and update_time like '%{time_[:10]}%'"
+            sql = f"select staff_id from attend where staff_id = '{id_}' and update_time like '%{time_[:10]}%'"
             logger.info(sql)
             ret = cursor.execute(sql).fetchone()
             if ret is None:
                 # 如果id空，那么插入一记录
-                sql = f"insert into attend (id,name,start_time,end_time,update_time)values ('{id_}','{name_}'," \
+                sql = f"insert into attend (staff_id,name,start_time,end_time,update_time)values ('{id_}','{name_}'," \
                       f"'{time_}','{time_}','{time_}')"
                 logger.info(sql)
                 cursor.execute(sql)
                 conn.commit()
             else:
                 # 就要开始比较了
-                sql = f"select start_time,end_time from attend where id = '{id_}' and update_time like '%{time_[:10]}%'"
+                sql = f"select start_time,end_time from attend where staff_id = '{id_}' and update_time like '%{time_[:10]}%'"
                 logger.info(sql)
                 cursor.execute(sql)
                 start_time, end_time = cursor.fetchone()
@@ -45,7 +45,7 @@ class AttendRecordThread(QThread):
                 if time_ < start_time:
                     start_time = time_
                 sql = f"update attend set start_time = '{start_time}',end_time='{end_time}',update_time = '{time_}' " \
-                      f"where id = '{id_}' and update_time like '%{time_[:8]}%'"
+                      f"where staff_id = '{id_}' and update_time like '%{time_[:10]}%'"
                 logger.info(sql)
                 cursor.execute(sql)
                 conn.commit()

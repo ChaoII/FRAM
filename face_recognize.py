@@ -1,5 +1,7 @@
 import cv2
 import time
+import platform
+
 from loguru import logger
 from datetime import datetime
 from utils import cv_image_to_qimg, crop_image
@@ -20,7 +22,7 @@ class FaceRecognizeThread(QThread):
                  face_lib_dir: str = "./facelib",
                  face_lib_configure: str = "facelib.json",
                  face_rec_model="face_recognizer_light.csta",
-                 record_freq=5,
+                 record_freq=20,
                  ignore_nums: int = 40,
                  threshold: int = 0.44,
                  target_size: tuple = (640, 480),
@@ -61,8 +63,8 @@ class FaceRecognizeThread(QThread):
         self._records = []
         # 当前已经记录的打开数量
         self._record_nums = 0
-        # 5min记录一次，如果嫌频率太低，可以降低单位ms
-        self._record_time = 300000
+        # 5min记录一次，如果嫌频率太低，可以降低单位m
+        self._record_time = 60
         # 上次记录的时间
         self._record_last_time = time.time()
 
@@ -72,20 +74,42 @@ class FaceRecognizeThread(QThread):
         self._fc_obj = None
         self._cap = None
         self._is_stop = False
-        self._start_tracker = True
+        if platform.system() == "Windows":
+            self._start_tracker = True
+        else:
+            self._start_tracker = False
 
         # do some initial work
         self.init_camera()
         self.init_model()
+
+    @staticmethod
+    def gstreamer_pipeline(capture_width, capture_height, display_width, display_height, framerate, flip_method):
+        return "nvarguscamerasrc ! video/x-raw(memory:NVMM), width=(int)" + str(capture_width) + ", height=(int)" + \
+               str(capture_height) + ", format=(string)NV12, framerate=(fraction)" + str(framerate) + \
+               "/1 ! nvvidconv flip-method=" + str(flip_method) + " ! video/x-raw, width=(int)" + \
+               str(display_width) + ", height=(int)" + str(
+            display_height) + ", format=(string)BGRx ! videoconvert ! video/x-raw, format=(string)BGR ! appsink"
 
     def init_camera(self):
         """
         初始化摄像头
         :return:
         """
-        self._cap = cv2.VideoCapture(self._camera_index)
-        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._target_size[0])
-        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._target_size[1])
+        if platform.system() == "Windows":
+            self._cap = cv2.VideoCapture(self._camera_index)
+            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._target_size[0])
+            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._target_size[1])
+        else:
+            stream_str = self.gstreamer_pipeline(
+                capture_width=self._target_size[0],
+                capture_height=self._target_size[1],
+                display_width=self._target_size[0],
+                display_height=self._target_size[1],
+                framerate=20,
+                flip_method=0
+            )
+            self._cap = cv2.VideoCapture(stream_str)
 
     def init_model(self):
         """
@@ -100,9 +124,7 @@ class FaceRecognizeThread(QThread):
 
     @logger.catch
     def run(self) -> None:
-
         while True:
-
             if self._is_stop:
                 break
             if self._cap.isOpened():
@@ -110,14 +132,14 @@ class FaceRecognizeThread(QThread):
                 if self._start_tracker:
                     faces_result = self._fc_obj.face_tracker(frame)
                     face_nums = len(faces_result)
+                    if self._record_nums == self._record_freq or time.time() - self._record_last_time > self._record_time:
+                        if len(self._records) != 0:
+                            self.record_attend_signal.emit(self._records)
+                            self._record_nums = 0
+                            self._records = []
+                            self._record_last_time = time.time()
                     if face_nums > 0:
                         # 如果数量超过或者时间超过，并且self._record不为空，那么直接发送
-                        if self._record_nums == self._record_freq or time.time() - self._record_last_time > self._record_time:
-                            if len(self._records) != 0:
-                                self.record_attend_signal.emit(self._records)
-                                self._record_nums = 0
-                                self._records = []
-                                self._record_last_time = time.time()
                         data = faces_result[0]
                         face, face_id = data.pos, data.PID
                         # 如果人脸变化，或者达到规定的ignore_nums帧
@@ -156,7 +178,6 @@ class FaceRecognizeThread(QThread):
                         self._frame_nums = self._frame_nums + 1
                     else:
                         self.is_person_signal.emit()
-                    # ----------------------------------------------
                 qimg = cv_image_to_qimg(crop_image(frame))
                 self.img_finish_signal.emit(qimg)
         self._cap.release()

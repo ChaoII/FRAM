@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, UploadFile, HTTPException, status, BackgroundTasks
 
+if platform.system() != "Windows":
+    os.system("sudo chmod 777 /dev/ttyTHS1")
 
 # configure region
 app = FastAPI(title="FRAM api")
@@ -93,6 +95,7 @@ def packing_face_info(id_: str, name_: str, update_time: str):
 def run_fram():
     global main_pid
     p = subprocess.Popen(f"{python_interpreter} {main_program}",
+                         shell=True,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     main_pid = p.pid
@@ -171,7 +174,7 @@ async def get_attended_infos(date_time: Optional[str] = None):
     try:
         conn = sqlite3.connect("attend.db")
         cursor = conn.cursor()
-        cursor.execute(f"select id,name,start_time,end_time from attend where update_time like '%{time_}%'")
+        cursor.execute(f"select staff_id,name,start_time,end_time from attend where update_time like '%{time_}%'")
         attend_info = sql_fetch_json(cursor)
         res["result"] = attend_info
     except Exception as e:
