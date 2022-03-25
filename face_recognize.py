@@ -22,9 +22,9 @@ class FaceRecognizeThread(QThread):
                  face_lib_dir: str = "./facelib",
                  face_lib_configure: str = "facelib.json",
                  face_rec_model="face_recognizer_light.csta",
-                 record_freq=20,
+                 record_freq=5,
                  ignore_nums: int = 40,
-                 threshold: int = 0.44,
+                 threshold: int = 0.55,
                  target_size: tuple = (640, 480),
                  use_gpu: bool = False,
                  is_single=True):
@@ -107,7 +107,7 @@ class FaceRecognizeThread(QThread):
                 display_width=self._target_size[0],
                 display_height=self._target_size[1],
                 framerate=20,
-                flip_method=0
+                flip_method=6
             )
             self._cap = cv2.VideoCapture(stream_str)
 

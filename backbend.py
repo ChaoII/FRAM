@@ -24,7 +24,7 @@ face_lib_dir = "./facelib/"
 
 face_config_json_path = os.path.join(face_lib_dir, "facelib.json")
 main_pid = -1
-provide_id = False
+provide_id = True
 
 main_program = "main.py"
 if platform.system() == "Windows":
@@ -139,7 +139,7 @@ async def add_face_libs(files: List[UploadFile] = File(...)):
         update_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %f")
         file_path = face_lib_dir + id_ + ".jpg"
 
-        res["id"] = id_
+        res["staff_id"] = id_
         res["name"] = name
         res["update_time"] = update_time
         res["message"] = "success"
@@ -161,25 +161,56 @@ async def add_face_libs(files: List[UploadFile] = File(...)):
     return res_list
 
 
+@app.get("/api/get_face_libraries")
+async def get_face_libraries():
+    with open(face_config_json_path, encoding="utf8") as fp:
+        res = ujson.load(fp)
+    return res
+
+
 @app.get("/api/get_attended_infos")
-async def get_attended_infos(date_time: Optional[str] = None):
-    if date_time is None:
-        time_ = datetime.date.today().strftime("%Y-%m-%d")
-    else:
-        date_obj = datetime.datetime.strptime(date_time, "%Y-%m-%d").date()
-        time_ = date_obj.strftime("%Y-%m-%d")
+async def get_attended_infos(start_time: Optional[datetime.datetime] = None,
+                             end_time: Optional[datetime.datetime] = None):
+    if start_time is None:
+        cur_date = datetime.date.today().strftime("%Y-%m-%d")
+        cur_time = "00:00:00 000000"
+        cur_date_time = cur_date + " " + cur_time
+        start_time = datetime.datetime.strptime(cur_date_time, "%Y-%m-%d %H:%M:%S %f")
+    # else:
+    #     date_obj = datetime.datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S %f")
+    #     start_time = date_obj.strftime("%Y-%m-%d")
+    if end_time is None:
+        cur_date = datetime.date.today().strftime("%Y-%m-%d")
+        cur_time = "23:59:59 999999"
+        cur_date_time = cur_date + " " + cur_time
+        end_time = datetime.datetime.strptime(cur_date_time, "%Y-%m-%d %H:%M:%S %f")
+    # else:
+    #     date_obj = datetime.datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S %f")
+    #     end_time = date_obj.strftime("%Y-%m-%d")
+
     res = dict()
     res["result"] = ""
     res["message"] = ""
     try:
         conn = sqlite3.connect("attend.db")
         cursor = conn.cursor()
-        cursor.execute(f"select staff_id,name,start_time,end_time from attend where update_time like '%{time_}%'")
+        cursor.execute(f"select staff_id,name,attend_time from attend \
+        where attend_time >'{start_time}' and attend_time <='{end_time}'")
         attend_info = sql_fetch_json(cursor)
         res["result"] = attend_info
     except Exception as e:
         res["message"] = f"query error, fault detail is {e},please try again serval seconds "
     return res
+
+
+@app.get("/api/clear_data")
+async def clear_data():
+    pass
+
+
+@app.get("/api/update_sys_time")
+async def update_sys_time():
+    pass
 
 
 @app.get("/api/start_fram/")
