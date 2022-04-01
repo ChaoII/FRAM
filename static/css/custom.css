@@ -1,0 +1,4 @@
+.table > tbody > tr > td {
+    border: 0;
+    text-align: center;
+}

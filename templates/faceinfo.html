@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>dashboard</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <script src="/static/js/jquery-3.5.1.min.js"></script>
+    <script src="/static/js/bootstrap.js"></script>
+</head>
+<body style="">
+
+<div style="height: 40px;width: 100%">
+
+    <h1> 人脸录入</h1>
+</div>
+
+
+<div style="height: 100%;width: 100%;padding: 20px">
+
+    {% for facelib in facelibs %}
+    <div style="float: left;width: 20% ;border: 1px solid gray">
+        <!--        5:7-->
+        <div style="height: 340px;width: 100%;border-bottom: 1px solid gray">
+            <img style="width: 100%;height: 100%;"
+                 src="/static/facelib/{{facelib.filename}}"
+                 alt="face_img">
+        </div>
+        <div style="margin:10px 5px 5px 5px">
+            <div style="float: left">
+                <table>
+                    <tr>
+                        <td> 姓名:</td>
+                        <td>{{facelib.name}}</td>
+                    </tr>
+                    <tr>
+                        <td>工号:</td>
+                        <td>{{facelib.id}}</td>
+                    </tr>
+                    <tr>
+                        <td>时间:</td>
+                        <td>{{facelib.update_time[:19]}}</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="float: right">
+                <button name={{facelib.id}} type="button" class="btn btn-danger">删除</button>
+            </div>
+        </div>
+
+    </div>
+    {% endfor %}
+
+</div>
+
+
+<script type="text/javascript">
+
+    $(function () {
+        $(".btn-danger").click(function () {
+            let id = $(this).attr("name")
+            alert(id)
+            $.ajax({
+                url: "/api/delete_face",
+                type: "delete",
+                data: JSON.stringify({"face_id": id}),
+
+                success: function (msg) {
+                    alert(msg.message)
+                    console.log($("this").parent().parent().parent().remove())
+                },
+                error: function (res) {
+                    alert(res.message)
+                }
+            })
+
+        })
+
+    })
+
+
+</script>
+
+</body>
+
+</html>

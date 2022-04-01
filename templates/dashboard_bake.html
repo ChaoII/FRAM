@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>dashboard</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <script src="/static/js/jquery-3.5.1.min.js"></script>
+    <script src="/static/js/bootstrap.js"></script>
+</head>
+<body>
+<div style=" height: 50px;background: #0c63e4">
+
+    <div style="float: left;text-align: center">
+        <span style="color: #ffffff;line-height: 50px;font-size: 24px">人脸识别打卡机管理后台</span>
+    </div>
+    <div style="float: right;margin-right:10px;line-height: 50px;text-align: center;color: #badbcc">
+        <span> 你好 艾超 ！</span>
+        <a href="https://www.baidu.com" style="font-size: 10px;color: #b6d4fe">退出</a>
+    </div>
+
+    <img src="/static/images/2.jpg" alt="motion"
+         style="float: right; margin-right:10px;margin-top:9px;width: 32px;height: 32px;border-radius: 50%"/>
+
+</div>
+
+<div style="float: left;height:1080px; width:10%;background: #5c636a;border-right: 3px solid gray">
+    <button class="btn btn-secondary" type="button"
+            style="width: 100%" id="attendinfo" onclick="attend_info();">
+        <span class="glyphicon glyphicon-user"></span> 打卡记录
+    </button>
+    <button class="btn btn-secondary" type="button" style="width: 100%" id="faceinfo">
+        <span class="glyphicon glyphicon-picture"></span> 人脸信息
+    </button>
+    <button class="btn btn-secondary" type="button" style="width: 100%" id="setting">
+        <span class="glyphicon glyphicon-cog"></span> 基础设置
+    </button>
+</div>
+
+<div style="float: left; width:90%;height: 1080px">
+    <div style="padding:3px 20px 6px 0; width: 100%;text-align: right;border-bottom: 3px solid gray">
+        <span>起始时间:</span>
+        <input id="start_time" type="datetime-local" value="2015-09-24T13:59:59"/>
+        <span>结束时间:</span>
+        <input id="end_time" type="datetime-local" value="2015-09-24T13:59:59"/>
+        <button onclick="search()">搜索</button>
+    </div>
+
+    <div style="padding: 20px 50px 0 50px ;width: 100%;height:650px;margin: auto;overflow-y:scroll">
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th scope="col"></th>
+                <th scope="col">工号</th>
+                <th scope="col">姓名</th>
+                <th scope="col">打卡时间</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+
+
+<script type="text/javascript">
+
+    $(function () {
+        attend_info()//执行函数
+    });
+
+
+    function fix(num, length) {
+        return ('' + num).length < length ? ((new Array(length + 1)).join('0') + num).slice(-length) : '' + num;
+    }
+
+    function attend_info() {
+        let date = new Date();
+        let year = date.getFullYear();        //年 ,从 Date 对象以四位数字返回年份
+        let month = date.getMonth() + 1;      //月 ,从 Date 对象返回月份 (0 ~ 11) ,date.getMonth()比实际月份少 1 个月
+        let day = date.getDate();             //日 ,从 Date 对象返回一个月中的某一天 (1 ~ 31)
+        let default_start_time = year + "-" + fix(month, 2) + "-" + fix(day, 2) + "T" + "00" + ":" + "00" + ":" + "01";
+        let default_end_time = year + "-" + fix(month, 2) + "-" + fix(day, 2) + "T" + "23" + ":" + "59" + ":" + "59";
+        $("#start_time").val(default_start_time)
+        $("#end_time").val(default_end_time)
+        $("tbody").html("")
+        attend_info_sub(default_start_time, default_end_time)
+    }
+
+    function search() {
+        let start_time = $("#start_time").val()
+        let end_time = $("#end_time").val()
+        $("tbody").html("")
+        attend_info_sub(start_time, end_time)
+    }
+
+    function attend_info_sub(start_time, end_time) {
+
+        $.ajax({
+            type: "POST",
+            url: "/api/get_attended_infos",
+            data: JSON.stringify({
+                "start_time": start_time,
+                "end_time": end_time
+            }),
+            success: function (data) {
+                for (let i = 0; i < data.result.length; i++) {
+                    let $tr = $("<tr>" +
+                            "<th scope=\"row\">" + i + "</th>" +
+                            "<td>" + data.result[i].staff_id + "</td>" +
+                            "<td>" + data.result[i].name + "</td>" +
+                            "<td>" + data.result[i].attend_time + "</td>" +
+                            "</tr>"
+                        )
+                    ;
+                    let $table = $("table");
+                    $table.append($tr);
+                }
+            },
+            error: function (result) {
+                alert(result)
+            }
+        })
+
+    }
+
+</script>
+
+</body>
+
+</html>
