@@ -1,9 +1,10 @@
 import platform
 from datetime import date, datetime
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, pyqtSlot, QTimer
+from PyQt5.QtCore import Qt, pyqtSlot, QTimer, QSize
 from PyQt5.QtGui import QImage, QPixmap, QPainter
 from PyQt5 import QtWidgets
+from PyQt5.QtGui import QMovie
 # from serial_input import DetectorPersonThread
 from ui.ui_main_widget import Ui_Form
 from face_recognize import FaceRecognizeThread
@@ -40,6 +41,19 @@ class MyWidget(QtWidgets.QWidget):
         timer.timeout.connect(lambda: self.ui.label_time.setText(datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         timer.start(1000)
 
+        # 设置人脸区域图像
+        # pix_map = QPixmap("./resource/images/face_region.png")
+        # self.ui.label.setPixmap(pix_map.scaled(320, pix_map.height(), Qt.KeepAspectRatio))
+
+        move = QMovie("./resource/images/face_region.gif")
+        move.setScaledSize(QSize(400, 400))
+        move.start()
+        self.ui.label.setMovie(move)
+        op = QtWidgets.QGraphicsOpacityEffect()
+        # 设置透明度的值，0.0到1.0，最小值0是透明，1是不透明
+        op.setOpacity(0.5)
+        self.ui.label.setGraphicsEffect(op)
+
     @pyqtSlot(QImage)
     def show_img(self, qimg):
         scaled_img = qimg.scaled(self.ui.image_label.size(),
@@ -61,21 +75,27 @@ class MyWidget(QtWidgets.QWidget):
 
     @pyqtSlot(list)
     def change_sign_info(self, info: list):
-        # 设置样式
-        self.ui.sign_name.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:#0dc839;")
-        self.ui.sign_time.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:#0dc839;")
-        self.ui.widget.setStyleSheet("#widget{background-color: rgba(46, 255, 0, 40);}")
+
         # 设置文字
         self.ui.sign_name.setText(info[0])
         self.ui.sign_time.setText(info[1])
-        # 设置图片
-        self.ui.label_attend_img.setPixmap(QPixmap("./resource/images/signin_success.png"))
+        if info[2] == 1:
+            # 设置样式
+            self.ui.sign_name.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:#0dc839;")
+            self.ui.sign_time.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:#0dc839;")
+            self.ui.widget.setStyleSheet("#widget{background-color: rgba(46, 255, 0, 40);}")
+            self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 0)")
+            self.ui.label_attend_img.setPixmap(QPixmap("./resource/images/signin_success.png"))
 
-        if not info[2]:
+        if info[2] == 0:
             self.ui.sign_name.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:red;")
             self.ui.sign_time.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:red;")
             self.ui.widget.setStyleSheet("#widget{background-color: rgba(255, 0, 0, 40);}")
             self.ui.label_attend_img.setPixmap(QPixmap("./resource/images/signin_fail.png"))
+            self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 0)")
+
+        if info[2] == -1:
+            self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 40)")
 
         if not self.ui.widget.isVisible():
             logger.warning("set visible")
@@ -84,6 +104,7 @@ class MyWidget(QtWidgets.QWidget):
     def set_cover_invisible(self):
         if self.ui.widget.isVisible():
             self.ui.widget.setVisible(False)
+            self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 0)")
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         if not self.isActiveWindow():

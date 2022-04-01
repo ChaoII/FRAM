@@ -2,11 +2,13 @@ import cv2
 import time
 import platform
 
+import numpy as np
 from loguru import logger
 from datetime import datetime
 from utils import cv_image_to_qimg, crop_image
 from PyQt5.QtGui import QImage
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal
+from jetsonface import FaceStatus
 from jetsonface import FaceProcessHelper
 
 
@@ -21,11 +23,12 @@ class FaceRecognizeThread(QThread):
                  font_path: str = "./fonts/simsun.ttc",
                  face_lib_dir: str = "./facelib",
                  face_lib_configure: str = "facelib.json",
-                 face_rec_model="face_recognizer_light.csta",
-                 record_freq=5,
+                 face_rec_model="face_recognizer.csta",
+                 record_freq=20,
                  ignore_nums: int = 40,
-                 threshold: int = 0.55,
-                 target_size: tuple = (640, 480),
+                 threshold: int = 0.60,
+                 cap_size: tuple = (640, 480),
+                 tracker_size: tuple = (640, 480),
                  use_gpu: bool = False,
                  is_single=True):
         """
@@ -53,7 +56,8 @@ class FaceRecognizeThread(QThread):
         self._face_rec_model = face_rec_model
         self._ignore_nums = ignore_nums
         self._threshold = threshold
-        self._target_size = target_size
+        self._cap_size = cap_size
+        self._tracker_size = tracker_size
         self._camera_index = camera_index
         self._use_gpu = use_gpu
         self._is_single = is_single
@@ -63,7 +67,7 @@ class FaceRecognizeThread(QThread):
         self._records = []
         # 当前已经记录的打开数量
         self._record_nums = 0
-        # 5min记录一次，如果嫌频率太低，可以降低单位m
+        # 5min记录一次，如果嫌频率太低，可以降低单位
         self._record_time = 60
         # 上次记录的时间
         self._record_last_time = time.time()
@@ -98,14 +102,14 @@ class FaceRecognizeThread(QThread):
         """
         if platform.system() == "Windows":
             self._cap = cv2.VideoCapture(self._camera_index)
-            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._target_size[0])
-            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._target_size[1])
+            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._cap_size[0])
+            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._cap_size[1])
         else:
             stream_str = self.gstreamer_pipeline(
-                capture_width=self._target_size[0],
-                capture_height=self._target_size[1],
-                display_width=self._target_size[0],
-                display_height=self._target_size[1],
+                capture_width=self._cap_size[0],
+                capture_height=self._cap_size[1],
+                display_width=self._cap_size[0],
+                display_height=self._cap_size[1],
                 framerate=20,
                 flip_method=6
             )
@@ -116,11 +120,19 @@ class FaceRecognizeThread(QThread):
         初始化模型
         :return:
         """
-        self._fc_obj = FaceProcessHelper(self._model_base_dir, self._font_path, self._target_size,
+        self._fc_obj = FaceProcessHelper(self._model_base_dir, self._font_path, self._tracker_size,
                                          face_rec_model=self._face_rec_model,
                                          threshold=self._threshold,
                                          use_gpu=self._use_gpu)
         self._fc_obj.create_face_feature_DB_by_json(self._face_lib_dir, self._face_lib_configure)
+
+    def condition_send_attend_signal(self):
+        if self._record_nums == self._record_freq or time.time() - self._record_last_time > self._record_time:
+            if len(self._records) != 0:
+                self.record_attend_signal.emit(self._records)
+                self._record_nums = 0
+                self._records = []
+                self._record_last_time = time.time()
 
     @logger.catch
     def run(self) -> None:
@@ -129,15 +141,12 @@ class FaceRecognizeThread(QThread):
                 break
             if self._cap.isOpened():
                 _, frame = self._cap.read()
+                self.condition_send_attend_signal()
+                # frame = np.rot90(frame)[:]
                 if self._start_tracker:
                     faces_result = self._fc_obj.face_tracker(frame)
                     face_nums = len(faces_result)
-                    if self._record_nums == self._record_freq or time.time() - self._record_last_time > self._record_time:
-                        if len(self._records) != 0:
-                            self.record_attend_signal.emit(self._records)
-                            self._record_nums = 0
-                            self._records = []
-                            self._record_last_time = time.time()
+                    self.condition_send_attend_signal()
                     if face_nums > 0:
                         # 如果数量超过或者时间超过，并且self._record不为空，那么直接发送
                         data = faces_result[0]
@@ -148,26 +157,37 @@ class FaceRecognizeThread(QThread):
                             # ----关键点检测----
                             points = self._fc_obj.face_marker(frame, [face.x, face.y, face.width, face.height])
                             point_py = [[point.x, point.y] for point in points]
-                            ret = self._fc_obj.face_recognition(frame, point_py)
-                            # -------------信号发送逻辑请在这里编写------------------
-                            # 发送io信号-----该处作为打卡可能不需要了
-
-                            if ret.confidence < self._threshold:
+                            # 人脸活体检测
+                            status = self._fc_obj.face_anti_spoofing(frame,
+                                                                     [face.x, face.y, face.width, face.height],
+                                                                     point_py)
+                            if status != FaceStatus.REAL:
+                                logger.critical("可能的攻击人脸")
+                                label = "攻击人脸"
                                 color = [0, 0, 255]
-                                self.rec_result_signal.emit(["未知", datetime.now().time().strftime("%H:%M:%S"), False])
-                                logger.warning("未知")
-                            else:
                                 self.rec_result_signal.emit(
-                                    [ret.face_info, datetime.now().time().strftime("%H:%M:%S"), True])
-                                color = [0, 255, 0]
-                                attend_info = dict()
-                                attend_info["id"] = ret.face_id
-                                attend_info["name"] = ret.face_info
-                                attend_info["datetime"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S %f")
-                                logger.info(f"打卡成功,打卡人:【{ret.face_info}】")
-                                self._records.append(attend_info)
-                                self._record_nums += 1
-                            label = ret.face_info + str(ret.confidence)[:7]
+                                    ["攻击人脸", datetime.now().time().strftime("%H:%M:%S"), -1])
+
+                            else:
+                                # 人脸识别
+                                ret = self._fc_obj.face_recognition(frame, point_py)
+                                if ret.confidence < self._threshold:
+                                    color = [0, 0, 255]
+                                    self.rec_result_signal.emit(
+                                        ["未知", datetime.now().time().strftime("%H:%M:%S"), 0])
+                                    logger.warning("未知人脸")
+                                else:
+                                    self.rec_result_signal.emit(
+                                        [ret.face_info, datetime.now().time().strftime("%H:%M:%S"), 1])
+                                    color = [0, 255, 0]
+                                    attend_info = dict()
+                                    attend_info["id"] = ret.face_id
+                                    attend_info["name"] = ret.face_info
+                                    attend_info["datetime"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S %f")
+                                    logger.info(f"打卡成功,打卡人:【{ret.face_info}】")
+                                    self._records.append(attend_info)
+                                    self._record_nums += 1
+                                label = ret.face_info + str(ret.confidence)[:7]
                         try:
                             self._fc_obj.draw_imgs(color, label, [face.x, face.y],
                                                    [face.x + face.width, face.y + face.height], frame)
