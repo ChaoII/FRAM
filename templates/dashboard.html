@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>dashboard</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap.css">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    <script src="/static/js/jquery-3.5.1.min.js"></script>
+    <script src="/static/js/bootstrap.js"></script>
+</head>
+<body>
+<div style=" height: 50px;background: #0c63e4">
+
+    <div style="float: left;text-align: center">
+        <span style="color: #ffffff;line-height: 50px;font-size: 24px">人脸识别打卡机管理后台</span>
+    </div>
+    <div style="float: right;margin-right:10px;line-height: 50px;text-align: center;color: #badbcc">
+        <span> 你好 艾超 ！</span>
+        <a href="https://www.baidu.com" style="font-size: 10px;color: #b6d4fe">退出</a>
+    </div>
+
+    <img src="/static/images/2.jpg" alt="motion"
+         style="float: right; margin-right:10px;margin-top:9px;width: 32px;height: 32px;border-radius: 50%"/>
+
+</div>
+
+<div style="float: left;height:1080px; width:10%;background: #5c636a;border-right: 3px solid gray">
+    <button class="btn btn-secondary" type="button"
+            style="width: 100%" id="attendinfo" onclick="attend_info();">
+        <span class="glyphicon glyphicon-user"></span> 打卡记录
+    </button>
+    <button class="btn btn-secondary" type="button"
+            style="width: 100%" id="faceinfo" onclick="face_info()">
+        <span class="glyphicon glyphicon-picture"></span> 人脸信息
+    </button>
+    <button class="btn btn-secondary" type="button" style="width: 100%" id="setting">
+        <span class="glyphicon glyphicon-cog"></span> 基础设置
+    </button>
+</div>
+
+<div style="float: left; width:90%;height: 1080px;margin: auto">
+    <iframe src="/attendinfo" style="width: 100%;height: 720px;">
+
+    </iframe>
+
+</div>
+
+
+<script type="text/javascript">
+
+    $(function () {
+
+    })
+
+    function attend_info() {
+        $("iframe").attr("src", "attendinfo")
+    }
+
+    function face_info() {
+        $("iframe").attr("src", "faceinfo")
+    }
+
+
+</script>
+
+</body>
+
+</html>
