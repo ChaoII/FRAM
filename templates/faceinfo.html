@@ -9,15 +9,81 @@
     <script src="/static/js/jquery-3.5.1.min.js"></script>
     <script src="/static/js/bootstrap.js"></script>
 </head>
-<body style="">
+<body style="height: 100%; overflow:hidden">
 
-<div style="height: 40px;width: 100%">
+<div style="height: 40px;width: 100%;padding: 10px 0 0 20px;margin-bottom: 20px">
 
-    <h1> 人脸录入</h1>
+    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal" data-whatever="@mdo">
+        <span class="glyphicon glyphicon-plus"></span>新增人脸
+    </button>
+
+
+    <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="exampleModalLabel">新增人脸</h4>
+                </div>
+                <div class="modal-body" style="width: 100%">
+
+
+                    <div style="height: 200px; border: 1px solid gray">
+                        <!--        5:7-->
+                        <div style="position: relative; float: left; height: 100%;width: 146px;border: 1px solid gray">
+
+                            <input type="file"
+                                   id="add_face"
+                                   style="height: 50%;width: 50%;position: absolute;cursor: pointer;
+                                    top: 0;
+                                    left: 0;
+                                    bottom: 0;
+                                    right: 0;
+                                    margin: auto;
+                                   opacity: 0;z-index: 999">
+
+                            <img id="face_preview"
+                                 style="width: 100%;height: 100%;z-index: 99"
+                                 src="/static/images/no_img.png"
+                                 alt="">
+                        </div>
+
+                        <div style="float: left; height: 100%; margin:10px 5px 5px 5px;">
+                            <div style="float: left">
+                                <table>
+                                    <tr>
+                                        <td> 姓名:</td>
+                                        <td id="name"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>工号:</td>
+                                        <td id=staff_id></td>
+                                    </tr>
+                                    <tr>
+                                        <td>时间:</td>
+                                        <td id=update_time></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" onclick="uploadface()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
 </div>
 
 
-<div style="height: 100%;width: 100%;padding: 20px">
+<div style="height: 720px;width: 100%;padding: 0 20px 20px 20px;overflow-y: scroll">
 
     {% for facelib in facelibs %}
     <div style="float: left;width: 20% ;border: 1px solid gray">
@@ -56,29 +122,59 @@
 
 
 <script type="text/javascript">
+    // 弹出新增人脸后，执行展示，读取操作
+    $("#add_face").change(function () {
+        $("#face_preview").attr("src", URL.createObjectURL($(this)[0].files[0]));
+        let file_path_split = $("#add_face").val().split("\\")
+        let file_name = file_path_split[file_path_split.length - 1]
+        let file_name_no_extension = file_name.split(".")[0]
+        let staff_id = file_name_no_extension.split("_")[0]
+        let staff_name = file_name_no_extension.split("_")[1]
+        let date = new Date();
+        $("#name").html(staff_name)
+        $("#staff_id").html(staff_id)
+        $("#update_time").html(date.toLocaleString())
+    });
+
+    function uploadface() {
+        let form_data = new FormData();
+        //用js取就有问题
+        let file_ = document.getElementById("add_face").files[0];
+        form_data.append("files", file_)
+        $.ajax({
+            url: "/api/add_face_libs",
+            type: "PUT",
+            data: form_data,
+            processData: false,    //不需要对数据做任何预处理
+            contentType: false,
+            success: function (msg) {
+                location.reload();
+            },
+            error: function (msg) {
+                alert("添加人脸失败,请按照格式【HRXXXX_姓名.jpg】命名文件")
+            }
+        })
+    }
 
     $(function () {
         $(".btn-danger").click(function () {
             let id = $(this).attr("name")
-            alert(id)
+            // 回调函数调用后this就不是当初那个this了，所以需要一个变量记录起来
+            let cur_btn = $(this)
             $.ajax({
                 url: "/api/delete_face",
                 type: "delete",
                 data: JSON.stringify({"face_id": id}),
-
                 success: function (msg) {
-                    alert(msg.message)
-                    console.log($("this").parent().parent().parent().remove())
+                    alert("删除成功:" + msg.message)
+                    cur_btn.parent().parent().parent().remove()
                 },
-                error: function (res) {
-                    alert(res.message)
+                error: function (msg) {
+                    alert(msg.message)
                 }
             })
-
         })
-
     })
-
 
 </script>
 

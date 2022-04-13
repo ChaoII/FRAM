@@ -13,10 +13,10 @@ from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 from starlette.requests import Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import FastAPI, File, UploadFile, HTTPException, status, BackgroundTasks, Depends, Body, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, status, BackgroundTasks, Depends, Body, Form, Query
 
 auth_users = [
     {"id": "HR0878", "name": "艾超", "password": "1234"},
@@ -31,7 +31,14 @@ if platform.system() != "Windows":
     os.system("sudo chmod 777 /dev/ttyTHS1")
 
 # configure region
-app = FastAPI(title="FRAM api")
+app = FastAPI(title="FRAM api",
+              contact={
+                  "name": "Deadpoolio the Amazing",
+                  "url": "http://x-force.example.com/contact/",
+                  "email": "dp@x-force.example.com",
+              },
+
+              )
 app.mount(path="/static/facelib", app=StaticFiles(directory="./facelib"), name="static_face_lib")
 app.mount(path="/static/", app=StaticFiles(directory="./static"), name="static")
 fr_obj = FaceProcessHelper("./models/", "./fonts/msyh.ttc", [0, 0])
@@ -61,7 +68,7 @@ app.add_middleware(
 
 SECRET_KEY = "ed970259a19edfedf1010199c7002d183bd15bcaec612481b29bac1cb83d8137"
 ALGORITHM = "HS256"
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/login')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/authorize')
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
@@ -156,30 +163,52 @@ def sql_fetch_json(cursor: sqlite3.Cursor):
     return json_data
 
 
-@app.get("/")
+@app.get("/items/")
+async def read_items():
+    html_content = """
+    <html>
+        <head>
+            <title>Some HTML in here</title>
+        </head>
+        <body>
+            <h1>Look ma! HTML!</h1>
+        </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content, status_code=200)
+
+
+@app.get("/", include_in_schema=False)
 async def index(request: Request):
-    return tmp.TemplateResponse('login.html', {'request': request})
+    return tmp.TemplateResponse('dashboard.html', {'request': request})
 
 
-@app.get("/login")
-async def login(request: Request):
-    return tmp.TemplateResponse('login.html', {'request': request})
+# @app.get("/login")
+# async def login(request: Request):
+#     return tmp.TemplateResponse('login.html', {'request': request})
 
 
-@app.get("/attendinfo")
+@app.get("/dashboard", include_in_schema=False)
+async def dashboard(request: Request):
+    # authorize_token(token)
+    # request.cookies.update({"token": token})
+    return tmp.TemplateResponse("dashboard.html", {"request": request})
+
+
+@app.get("/attendinfo", include_in_schema=False)
 async def attendinfo(request: Request):
     return tmp.TemplateResponse('attendinfo.html', {'request': request})
 
 
-@app.get("/faceinfo")
+@app.get("/faceinfo", include_in_schema=False)
 async def faceinfo(request: Request):
     with open(face_config_json_path, encoding="utf8") as fp:
         res = ujson.load(fp)
     return tmp.TemplateResponse('faceinfo.html', {'request': request, "facelibs": res})
 
 
-@app.post('/login')
-async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+@app.post('/authorize', include_in_schema=False)
+async def authorize(username: str = Form(...), password: str = Form(...)):
     if username in auth_users_ids:
         idx = auth_users_ids.index(username)
         user = auth_users[idx]
@@ -188,16 +217,14 @@ async def login(request: Request, username: str = Form(...), password: str = For
             # 使用user_id生成jwt token
             data = {'user_id': username}
             token = create_jwt_token(data)
-            return tmp.TemplateResponse("dashboard.html", {"request": request, 'token': token})
+            return {"token": token}
         else:
-            return tmp.TemplateResponse("login.html", {"request": request, 'password_info': "密码错误"})
-
+            return {"message": "密码错误"}
     else:
-        return tmp.TemplateResponse("login.html", {"request": request, 'username_info': "用户名错误"})
+        return {"message": "用户名不存在"}
 
 
-@app.put("/api/add_face_libs")
-async def add_face_libs(files: List[UploadFile] = File(...), token: str = Depends(oauth2_scheme)):
+def authorize_token(token):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="认证失败",
@@ -215,13 +242,15 @@ async def add_face_libs(files: List[UploadFile] = File(...), token: str = Depend
         if not user_id:
             raise credentials_exception
     except JWTError as e:
-        print(f'认证异常: {e}')
         # 如果解密过程出现异常, 则返回认证异常
         raise credentials_exception
     # 解密成功, 返回token中包含的user_id
-    # 执行该用户下的操作
     if user_id not in auth_users_ids:
         raise credentials_exception
+
+
+@app.put("/api/add_face_libs")
+async def add_face_libs(files: List[UploadFile] = File(...)):
     res_list = []
     for file in files:
         res = dict()
@@ -260,6 +289,7 @@ async def add_face_libs(files: List[UploadFile] = File(...), token: str = Depend
 
 @app.get("/api/get_face_libraries")
 async def get_face_libraries():
+    # authorize_token(token)
     with open(face_config_json_path, encoding="utf8") as fp:
         res = ujson.load(fp)
     return res
@@ -274,18 +304,27 @@ async def delete_face(delete_info: DeleteInfo):
     try:
         with open(face_config_json_path, encoding="utf8") as fp:
             res = ujson.load(fp)
-        del res[delete_info.face_id]
-        os.remove("./facelib/face_id" + ".jpg")
+        flags = [info.get("id") for info in res]
+        idx = flags.index(delete_info.face_id)
+        os.remove(os.path.join(face_lib_dir, res[idx]["filename"]))
+        res.remove(res[idx])
         with open(face_config_json_path, "w", encoding="utf8") as fw:
             ujson.dump(res, fw, ensure_ascii=False)
     except Exception as e:
-        return {"message": f"failed + 【{e}】"}
+        return HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR,
+                             {"message": f"failed + 【{e}】"})
     return {"message": "success"}
 
 
 @app.post("/api/get_attended_infos")
 async def get_attended_infos(start_time: datetime.datetime = Body(...),
                              end_time: datetime.datetime = Body(...)):
+    """
+    获取打卡流水，按照时间段来
+    :param start_time: 打卡起始时间
+    :param end_time: 打卡结束时间
+    :return:
+    """
     print(start_time.strftime("%Y-%m-%d %H:%M:%S %f"))
     res = dict()
     res["result"] = ""
@@ -338,13 +377,13 @@ async def update_sys_time(date_time: DateTimeModel):
         os.system(f"sudo date -s {time_str}")
 
 
-@app.get("/api/start_fram/")
+@app.get("/api/start_fram/", deprecated=True, description="该接口已经废弃，请远程终端使用`【supervisorctl start attend】`进行重启")
 async def start_fram(back_task: BackgroundTasks):
     back_task.add_task(run_fram)
     return {"message": "frame start successfully"}
 
 
-@app.get("/api/stop_frame/")
+@app.get("/api/stop_frame/", deprecated=True, description="该接口已经废弃，请远程终端使用【supervisorctl stop attend】进行停止")
 async def stop_frame():
     global main_pid
     try:
@@ -361,7 +400,7 @@ async def stop_frame():
         )
 
 
-@app.get("/api/restart_fram")
+@app.get("/api/restart_fram", deprecated=True, description="该接口已经废弃，请远程终端使用【supervisorctl restart attend】进行重启")
 async def restart_fram(back_task: BackgroundTasks):
     global main_pid
     try:

@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>dashboard</title>
+    <link rel="icon" href="/static/images/logo32.png">
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
     <link rel="stylesheet" href="/static/css/bootstrap.css">
     <link rel="stylesheet" href="/static/css/custom.css">
     <script src="/static/js/jquery-3.5.1.min.js"></script>
     <script src="/static/js/bootstrap.js"></script>
 </head>
-<body>
+<body style="height:100%;overflow:hidden;">
 <div style=" height: 50px;background: #0c63e4">
 
     <div style="float: left;text-align: center">
@@ -34,13 +35,13 @@
             style="width: 100%" id="faceinfo" onclick="face_info()">
         <span class="glyphicon glyphicon-picture"></span> 人脸信息
     </button>
-    <button class="btn btn-secondary" type="button" style="width: 100%" id="setting">
-        <span class="glyphicon glyphicon-cog"></span> 基础设置
-    </button>
+    <!--    <button class="btn btn-secondary" type="button" style="width: 100%" id="setting">-->
+    <!--        <span class="glyphicon glyphicon-cog"></span> 基础设置-->
+    <!--    </button>-->
 </div>
 
 <div style="float: left; width:90%;height: 1080px;margin: auto">
-    <iframe src="/attendinfo" style="width: 100%;height: 720px;">
+    <iframe src="/attendinfo" style="width: 100%;height: 780px;">
 
     </iframe>
 
@@ -54,6 +55,18 @@
     })
 
     function attend_info() {
+        // console.log("ada")
+        // $.ajax({
+        //     url: "/attendinfo",
+        //     type: 'get',
+        //     headers: {
+        //         "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiSFIwODc4IiwiZXhwIjoxNjQ5MzUyNDgyfQ.j6RgYy37Cdnw3twKYLIsGeznDVnC5fXYJe7aagzMzDs"
+        //     },
+        //     success: function (res) {
+        //         $("iframe").s
+        //
+        //     }
+        // })
         $("iframe").attr("src", "attendinfo")
     }
 

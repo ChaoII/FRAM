@@ -9,7 +9,7 @@
     <script src="/static/js/jquery-3.5.1.min.js"></script>
     <script src="/static/js/bootstrap.js"></script>
 </head>
-<body style="overflow:hidden">
+<body style="height:100%;overflow:hidden">
 
 
 <div style="float: left; width:100%;height: 100%">
@@ -21,17 +21,23 @@
         <button onclick="search()">搜索</button>
     </div>
 
-    <div style="padding: 20px 50px 0 50px ;width: 100%;height:650px;margin: auto;overflow-y:scroll">
+    <div style="padding: 20px 50px 0 50px ;width: 100%;height:720px;margin: auto;overflow-y:scroll">
         <table class="table table-striped">
             <thead>
             <tr>
-                <th scope="col"></th>
-                <th scope="col">工号</th>
-                <th scope="col">姓名</th>
-                <th scope="col">打卡时间</th>
+                <th style="text-align: center">序号</th>
+                <th style="text-align: center">工号</th>
+                <th style="text-align: center">姓名</th>
+                <th style="text-align: center">打卡时间</th>
             </tr>
             </thead>
             <tbody>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
 
             </tbody>
         </table>
@@ -77,21 +83,22 @@
         $.ajax({
             type: "POST",
             url: "/api/get_attended_infos",
+            contentType: "application/json",
             data: JSON.stringify({
                 "start_time": start_time,
                 "end_time": end_time
             }),
-            success: function (data) {
-                for (let i = 0; i < data.result.length; i++) {
+            success: function (msg) {
+                for (let i = 0; i < msg.result.length; i++) {
                     let $tr = $("<tr>" +
-                            "<th scope=\"row\">" + i + "</th>" +
-                            "<td>" + data.result[i].staff_id + "</td>" +
-                            "<td>" + data.result[i].name + "</td>" +
-                            "<td>" + data.result[i].attend_time + "</td>" +
+                            "<td>" + i + "</td>" +
+                            "<td>" + msg.result[i].staff_id + "</td>" +
+                            "<td>" + msg.result[i].name + "</td>" +
+                            "<td>" + msg.result[i].attend_time + "</td>" +
                             "</tr>"
                         )
                     ;
-                    let $table = $("table");
+                    let $table = $("tbody");
                     $table.append($tr);
                 }
             },
