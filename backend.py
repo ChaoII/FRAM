@@ -162,22 +162,6 @@ def sql_fetch_json(cursor: sqlite3.Cursor):
         json_data.append(item)
     return json_data
 
-
-@app.get("/items/")
-async def read_items():
-    html_content = """
-    <html>
-        <head>
-            <title>Some HTML in here</title>
-        </head>
-        <body>
-            <h1>Look ma! HTML!</h1>
-        </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content, status_code=200)
-
-
 @app.get("/", include_in_schema=False)
 async def index(request: Request):
     return tmp.TemplateResponse('dashboard.html', {'request': request})

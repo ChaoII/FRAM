@@ -25,7 +25,7 @@ class FaceRecognizeThread(QThread):
                  face_lib_configure: str = "facelib.json",
                  face_rec_model="face_recognizer.csta",
                  record_freq=20,
-                 ignore_nums: int = 40,
+                 ignore_nums: int = 20,
                  threshold: int = 0.60,
                  cap_size: tuple = (640, 480),
                  tracker_size: tuple = (640, 480),
