@@ -1,10 +1,12 @@
+import os
 import platform
-from datetime import date, datetime
+from datetime import datetime
 from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer, QSize
-from PyQt5.QtGui import QImage, QPixmap, QPainter
+from PyQt5.QtGui import QImage, QPixmap
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QMovie
+from play_audio import PlayAudioThread
 # from serial_input import DetectorPersonThread
 from ui.ui_main_widget import Ui_Form
 from face_recognize import FaceRecognizeThread
@@ -19,6 +21,7 @@ class MyWidget(QtWidgets.QWidget):
         self.ui.setupUi(self)  # 初始化
         # self.setWindowFlags(Qt.FramelessWindowHint)
 
+        self.play_autio_thread = PlayAudioThread()
         self.ui.widget.setVisible(False)
         self.face_rec = FaceRecognizeThread(use_gpu=platform.system() != "Windows")
         # self.people_rec = DetectorPersonThread()
@@ -86,6 +89,8 @@ class MyWidget(QtWidgets.QWidget):
             self.ui.widget.setStyleSheet("#widget{background-color: rgba(46, 255, 0, 40);}")
             self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 0)")
             self.ui.label_attend_img.setPixmap(QPixmap("./resource/images/signin_success.png"))
+            if not self.play_autio_thread.isRunning():
+                self.play_autio_thread.start()
 
         if info[2] == 0:
             self.ui.sign_name.setStyleSheet(f"font-size:{self.cur_font_size}pt; font-weight:600;color:red;")
