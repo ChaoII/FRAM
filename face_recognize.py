@@ -1,7 +1,6 @@
 import cv2
 import time
 import platform
-
 import numpy as np
 from loguru import logger
 from datetime import datetime
@@ -132,7 +131,7 @@ class FaceRecognizeThread(QThread):
                 self.record_attend_signal.emit(self._records)
                 self._record_nums = 0
                 self._records = []
-                self._record_last_time = time.time()
+            self._record_last_time = time.time()
 
     @logger.catch
     def run(self) -> None:
@@ -175,7 +174,7 @@ class FaceRecognizeThread(QThread):
                                     color = [0, 0, 255]
                                     self.rec_result_signal.emit(
                                         ["未知", datetime.now().time().strftime("%H:%M:%S"), 0])
-                                    logger.warning("未知人脸")
+                                    logger.warning(f"未知人脸,confidence:{ret.confidence:.2f}")
                                 else:
                                     self.rec_result_signal.emit(
                                         [ret.face_info, datetime.now().time().strftime("%H:%M:%S"), 1])

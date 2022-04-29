@@ -103,7 +103,6 @@ class MyWidget(QtWidgets.QWidget):
             self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 40)")
 
         if not self.ui.widget.isVisible():
-            logger.warning("set visible")
             self.ui.widget.setVisible(True)
 
     def set_cover_invisible(self):
@@ -113,7 +112,6 @@ class MyWidget(QtWidgets.QWidget):
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         if not self.isActiveWindow():
-            logger.warning("activate window")
             self.activateWindow()
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:

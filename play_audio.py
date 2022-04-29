@@ -1,5 +1,8 @@
 from PyQt5.QtCore import QThread
 from playsound import playsound
+import os
+
+pwd = os.path.dirname(__file__)
 
 
 class PlayAudioThread(QThread):
@@ -7,4 +10,4 @@ class PlayAudioThread(QThread):
         super(PlayAudioThread, self).__init__()
 
     def run(self):
-        playsound("./audio/thanks.wav")
+        playsound(os.path.join(pwd, "./audio/thanks.wav"))

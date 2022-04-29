@@ -114,7 +114,7 @@ def update_info(src_face_infos: List[dict], dst_face_infos: List[dict]):
         cur_flag = dst_info.get(flag_str, "-1")
         if cur_flag in flags:
             idx = flags.index(cur_flag)
-            os.remove(os.path.join(face_lib_dir, src_face_infos[idx]["filename"]))
+            # os.remove(os.path.join(face_lib_dir, src_face_infos[idx]["filename"]))
             src_face_infos[idx] = dst_info
         else:
             src_face_infos.append(dst_info)
@@ -161,6 +161,7 @@ def sql_fetch_json(cursor: sqlite3.Cursor):
             item[keys[q]] = value
         json_data.append(item)
     return json_data
+
 
 @app.get("/", include_in_schema=False)
 async def index(request: Request):
