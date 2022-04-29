@@ -25,9 +25,8 @@ class FaceRecognitionThread(QThread):
         points = self._face_obj.face_marker(self._frame, box)
         point_py = [[point.x, point.y] for point in points]
         # 人脸活体检测
-        status = self._face_obj.face_anti_spoofing(self._frame,
-                                                   box, point_py)
-        status = 0
+        status = self._face_obj.face_anti_spoofing(self._frame, box, point_py)
+        # status = 0
         if status != FaceStatus.REAL:
             logger.critical("可能的攻击人脸")
             self.face_recognition_signal.emit(
