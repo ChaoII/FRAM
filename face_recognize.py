@@ -1,7 +1,6 @@
 import cv2
 import time
 import platform
-import numpy as np
 from loguru import logger
 from datetime import datetime
 from utils import cv_image_to_qimg, crop_image
@@ -69,6 +68,8 @@ class FaceRecognizeThread(QThread):
         self._cap = None
 
         self._rect = None
+        self._gap_w = None
+        self._gap_h = None
         if platform.system() == "Windows":
             self._start_tracker = True
         else:
@@ -133,6 +134,8 @@ class FaceRecognizeThread(QThread):
     def run(self) -> None:
         if not self._cap.isOpened():
             return
+        _, frame = self._cap.read()
+        _, self._gap_w, self._gap_h = crop_image(frame)
         while True:
             _, frame = self._cap.read()
             # frame = crop_image(frame)
@@ -146,7 +149,9 @@ class FaceRecognizeThread(QThread):
                     data = faces_result[0]
                     face, face_id = data.pos, data.PID
                     self._rect = [face.x, face.y, face.width, face.height]
-
+                    if self._rect is not None:
+                        self.det_signal.emit(
+                            [self._rect[0] - self._gap_w, self._rect[1] - self._gap_h, self._rect[2], self._rect[3]])
                     # 如果人脸变化，或者达到规定的ignore_nums帧
                     if face_id != self._last_id or self._frame_nums == self._ignore_nums:
                         self._frame_nums = 0
@@ -158,13 +163,11 @@ class FaceRecognizeThread(QThread):
                     self._frame_nums = self._frame_nums + 1
                 else:
                     self.is_person_signal.emit()
-            crop_im, gap_w, gap_h = crop_image(frame)
+            crop_im, _, _ = crop_image(frame)
 
             qimg = cv_image_to_qimg(crop_im)
             self.img_finish_signal.emit(qimg)
-            if self._rect is not None:
-                rect = [self._rect[0] - gap_w, self._rect[1] - gap_h, self._rect[2], self._rect[3]]
-                self.det_signal.emit(rect)
+
         self._cap.release()
 
     def start_tracker(self):
