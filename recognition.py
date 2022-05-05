@@ -40,6 +40,6 @@ class FaceRecognitionThread(QThread):
                     {"code": 0, "time": datetime.now().time().strftime("%H:%M:%S"), "message": "未知人脸"})
                 logger.warning(f"未知人脸,confidence:{ret.confidence:.2f}")
             else:
-                logger.info(ret.confidence)
+                logger.info(f"打卡成功--name:【{ret.face_info}】--score:【{ret.confidence:.2f}】")
                 self.face_recognition_signal.emit(
                     {"code": 1, "time": datetime.now().time().strftime("%H:%M:%S"), "message": ret})

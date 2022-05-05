@@ -1,6 +1,7 @@
 import cv2
 import time
 import platform
+import numpy as np
 from loguru import logger
 from datetime import datetime
 from utils import cv_image_to_qimg, crop_image
@@ -24,7 +25,7 @@ class FaceRecognizeThread(QThread):
                  face_lib_dir: str = "./facelib",
                  face_lib_configure: str = "facelib.json",
                  face_rec_model="face_recognizer.csta",
-                 ignore_nums: int = 20,
+                 ignore_nums: int = 10,
                  threshold: int = 0.60,
                  cap_size: tuple = (640, 480),
                  tracker_size: tuple = (640, 480),
@@ -66,10 +67,10 @@ class FaceRecognizeThread(QThread):
         self._frame_nums = 0
         self._fc_obj = None
         self._cap = None
+        self._gap_w = 0
+        self._gap_h = 0
 
         self._rect = None
-        self._gap_w = None
-        self._gap_h = None
         if platform.system() == "Windows":
             self._start_tracker = True
         else:
@@ -107,7 +108,11 @@ class FaceRecognizeThread(QThread):
                 framerate=20,
                 flip_method=6
             )
+
             self._cap = cv2.VideoCapture(stream_str)
+            if self._cap.isOpened():
+                self._cap.release()
+                self._cap = cv2.VideoCapture(stream_str)
 
     def init_model(self):
         """
@@ -121,7 +126,10 @@ class FaceRecognizeThread(QThread):
         self._fc_obj.create_face_feature_DB_by_json(self._face_lib_dir, self._face_lib_configure)
 
         self._rec_thread = FaceRecognitionThread(self._fc_obj)
-        self._rec_thread.face_recognition_signal.connect(self.on_face_rec_result, Qt.BlockingQueuedConnection)
+        if platform.system() == "Windows":
+            self._rec_thread.face_recognition_signal.connect(self.on_face_rec_result, Qt.BlockingQueuedConnection)
+        else:
+            self._rec_thread.face_recognition_signal.connect(self.on_face_rec_result)
 
     def condition_send_attend_signal(self):
         if time.time() - self._record_last_time > self._record_time:
@@ -159,6 +167,12 @@ class FaceRecognizeThread(QThread):
                         if not self._rec_thread.isRunning():
                             self._rec_thread.start()
                         self.rec_result_signal.emit(self.result)
+                        if self.result["code"] == 1:
+                            attend_info = dict()
+                            attend_info["id"] = self.result["message"].face_id
+                            attend_info["name"] = self.result["message"].face_info
+                            attend_info["datetime"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S %f")
+                            self._records.append(attend_info)
                     self._last_id = face_id
                     self._frame_nums = self._frame_nums + 1
                 else:
@@ -167,7 +181,6 @@ class FaceRecognizeThread(QThread):
 
             qimg = cv_image_to_qimg(crop_im)
             self.img_finish_signal.emit(qimg)
-
         self._cap.release()
 
     def start_tracker(self):
@@ -177,6 +190,7 @@ class FaceRecognizeThread(QThread):
 
     def stop_tracker(self):
         self._start_tracker = False
+        self._rect = None
         self.is_person_signal.emit()
 
     def on_face_rec_result(self, info: dict):

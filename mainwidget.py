@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt, pyqtSlot, QTimer, QSize, QRect
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QMovie
-from play_audio import PlayAudioThread
+# from play_audio import PlayAudioThread
 # from serial_input import DetectorPersonThread
 from ui.ui_main_widget import Ui_Form
 from face_recognize import FaceRecognizeThread
@@ -20,22 +20,26 @@ class MyWidget(QtWidgets.QWidget):
         self.ui = Ui_Form()  # 实例化UI对象
         self.ui.setupUi(self)  # 初始化
         # self.setWindowFlags(Qt.FramelessWindowHint)
-        self.play_autio_thread = PlayAudioThread()
+        # self.play_autio_thread = PlayAudioThread()
         self.ui.widget.setVisible(False)
         self.face_rec = FaceRecognizeThread(use_gpu=platform.system() != "Windows")
+        if platform.system() == "Windows":
+            self.connect_type = Qt.BlockingQueuedConnection
+        else:
+            self.connect_type = None
         # self.people_rec = DetectorPersonThread()
-        # self.people_rec.people_entry_signal.connect(self.on_detective_people, Qt.BlockingQueuedConnection)
+        # self.people_rec.people_entry_signal.connect(self.on_detective_people)
         # self.people_rec.start()
         # 实时画面传输信号
-        self.face_rec.img_finish_signal.connect(self.show_img, Qt.BlockingQueuedConnection)
+        self.face_rec.img_finish_signal.connect(self.show_img, self.connect_type)
         # 打卡信息保存信号
-        self.face_rec.record_attend_signal.connect(self.delt, Qt.BlockingQueuedConnection)
+        self.face_rec.record_attend_signal.connect(self.delt, self.connect_type)
         # 识别结果信号-触发显示信息
-        self.face_rec.rec_result_signal.connect(self.change_sign_info, Qt.BlockingQueuedConnection)
+        self.face_rec.rec_result_signal.connect(self.change_sign_info, self.connect_type)
         # 判断是否有人脸的信号--触发控件 visible
-        self.face_rec.is_person_signal.connect(self.set_cover_invisible, Qt.BlockingQueuedConnection)
+        self.face_rec.is_person_signal.connect(self.set_cover_invisible, self.connect_type)
         # 绘制矩形框
-        self.face_rec.det_signal.connect(self.draw_rect, Qt.BlockingQueuedConnection)
+        self.face_rec.det_signal.connect(self.draw_rect, self.connect_type)
         QTimer.singleShot(500, self.face_rec.start)
         # 显示字体大小
         self._rect = None
@@ -61,10 +65,10 @@ class MyWidget(QtWidgets.QWidget):
 
     @pyqtSlot(QImage)
     def show_img(self, qimg):
-        painter = QPainter(qimg)
-        pen = QPen(Qt.yellow, 2, Qt.SolidLine)
-        painter.setPen(pen)
         if self._rect is not None:
+            painter = QPainter(qimg)
+            pen = QPen(Qt.yellow, 2, Qt.SolidLine)
+            painter.setPen(pen)
             painter.drawRect(self._rect[0], self._rect[1], self._rect[2], self._rect[3])
         scaled_img = qimg.scaled(self.ui.image_label.size(),
                                  Qt.KeepAspectRatio,
@@ -106,8 +110,8 @@ class MyWidget(QtWidgets.QWidget):
             self.ui.widget.setStyleSheet("#widget{background-color: rgba(46, 255, 0, 40);}")
             self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 0)")
             self.ui.label_attend_img.setPixmap(QPixmap("./resource/images/signin_success.png"))
-            if not self.play_autio_thread.isRunning():
-                self.play_autio_thread.start()
+            # if not self.play_autio_thread.isRunning():
+            #    self.play_autio_thread.start()
 
         if info["code"] == 0:
             self.ui.sign_name.setText(info["message"])
@@ -116,16 +120,15 @@ class MyWidget(QtWidgets.QWidget):
             self.ui.widget.setStyleSheet("#widget{background-color: rgba(255, 0, 0, 40);}")
             self.ui.label_attend_img.setPixmap(QPixmap("./resource/images/signin_fail.png"))
             self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 0)")
-        #
-
         if not self.ui.widget.isVisible():
             self.ui.widget.setVisible(True)
 
     def set_cover_invisible(self):
         if self.ui.widget.isVisible():
             self.ui.widget.setVisible(False)
-            self._rect = None
             self.ui.cover.setStyleSheet("background-color:rgba(255, 0, 0, 0)")
+        if self._rect is not None:
+            self._rect = None
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         if not self.isActiveWindow():

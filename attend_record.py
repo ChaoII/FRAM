@@ -25,11 +25,8 @@ class AttendRecordThread(QThread):
             if face_info_["id"] not in face_ids:
                 face_infos.append((face_info_["id"], face_info_["name"], face_info_["datetime"]))
                 face_ids.append(face_info_["id"])
-        print(face_infos)
-        # face_infos = [(face_info_["id"], face_info_["name"], face_info_["datetime"]) for face_info_ in self._face_infos]
         sql = f"insert into attend (staff_id,name,attend_time)values (?,?,?)"
-        logger.info(f"{sql},attend nums:{len(face_infos)}")
-
+        logger.info(sql)
         try:
             cursor.executemany(sql, face_infos)
             conn.commit()

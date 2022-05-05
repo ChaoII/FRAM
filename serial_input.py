@@ -22,7 +22,7 @@ class DetectorPersonThread(QThread):
                 fh_data = serial.Serial(self.com, self.port, timeout=self.timeout).read(7).hex()
                 if fh_data[0:2] == '01':
                     fh_datas = int(fh_data[6:10], 16) / 10
-                    if fh_datas > 30 or fh_datas <= 90:
+                    if fh_datas > 30 and fh_datas <= 90:
                         self.people_entry_signal.emit()
             except Exception as e:
                 logger.error(e)
