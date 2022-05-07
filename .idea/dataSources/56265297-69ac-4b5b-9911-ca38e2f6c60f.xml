@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataSource name="attend.db">
-  <database-model serializer="dbm" dbms="SQLITE" family-id="SQLITE" format-version="4.32">
+  <database-model serializer="dbm" dbms="SQLITE" family-id="SQLITE" format-version="4.38">
     <root id="1">
       <ServerVersion>3.36.0</ServerVersion>
     </root>
@@ -1292,10 +1292,10 @@
       <System>1</System>
     </table>
     <column id="476" parent="473" name="id">
+      <AutoIncrement>1</AutoIncrement>
       <DataType>INTEGER|0s</DataType>
       <NotNull>1</NotNull>
       <Position>1</Position>
-      <SequenceIdentity>null</SequenceIdentity>
     </column>
     <column id="477" parent="473" name="staff_id">
       <DataType>TEXT|0s</DataType>
