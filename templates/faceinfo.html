@@ -11,10 +11,14 @@
 </head>
 <body style="height: 100%; overflow:hidden">
 
-<div style="height: 40px;width: 100%;padding: 10px 0 0 20px;margin-bottom: 20px">
+<div style="height: 40px;width: 100%;padding: 10px 20px 0 20px;margin-bottom: 20px">
 
     <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal" data-whatever="@mdo">
         <span class="glyphicon glyphicon-plus"></span>新增人脸
+    </button>
+
+    <button type="button" style="float: right" class="btn btn-primary" onclick="update_library()">
+        <span class="glyphicon glyphicon-refresh"></span>更新人脸库
     </button>
 
 
@@ -152,6 +156,20 @@
             },
             error: function (msg) {
                 alert("添加人脸失败,请按照格式【HRXXXX_姓名.jpg】命名文件")
+            }
+        })
+    }
+
+    function update_library() {
+
+        $.ajax({
+            url: "/api/restart_frame",
+            type: "get",
+            success: function (msg) {
+                alert("更新成功！");
+            },
+            error: function (msg) {
+                alert("更新失败！");
             }
         })
     }

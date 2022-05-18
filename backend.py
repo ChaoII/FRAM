@@ -7,7 +7,7 @@ import psutil
 import subprocess
 import sqlite3
 import requests
-#from jose import JWTError, jwt
+# from jose import JWTError, jwt
 from typing import List, Optional
 from jetsonface import FaceProcessHelper
 from pydantic import BaseModel
@@ -19,14 +19,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import FastAPI, File, UploadFile, HTTPException, status, BackgroundTasks, Depends, Body, Form, Query
 
+
 # 启动程序执行时间同步
 
 def time_sync():
     if platform.system() != "Windows":
         os.system("sudo chmod 777 /dev/ttyTHS1")
-        date_time_str = requests.post("http://10.36.0.10:8001/api/services/assistant/UserConfig/GetNow",json={}).json()["result"]
+        date_time_str = \
+            requests.post("http://10.36.0.10:8001/api/services/assistant/UserConfig/GetNow", json={}).json()["result"]
         os.system(f"sudo date -s {date_time_str}")
         print(f"success update system time at {date_time_str}")
+
 
 auth_users = [
     {"id": "HR0878", "name": "艾超", "password": "1234"},
@@ -78,7 +81,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/authorize')
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
-#def create_jwt_token(data: dict, expire_delta: Optional[datetime.timedelta] = None):
+# def create_jwt_token(data: dict, expire_delta: Optional[datetime.timedelta] = None):
 #    # 如果传入了过期时间, 那么就是用该时间, 否则使用默认的时间
 #    expire = datetime.datetime.now() + expire_delta if expire_delta else datetime.datetime.now() + datetime.timedelta(
 #        minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -215,7 +218,7 @@ async def authorize(username: str = Form(...), password: str = Form(...)):
         return {"message": "用户名不存在"}
 
 
-#def authorize_token(token):
+# def authorize_token(token):
 #    credentials_exception = HTTPException(
 #        status_code=status.HTTP_401_UNAUTHORIZED,
 #        detail="认证失败",
@@ -393,8 +396,8 @@ async def stop_frame():
         )
 
 
-@app.get("/api/restart_fram", deprecated=True, description="该接口已经废弃，请远程终端使用【supervisorctl restart attend】进行重启")
-async def restart_fram(back_task: BackgroundTasks):
+@app.get("/api/restart_frame", deprecated=True, description="该接口已经废弃，请远程终端使用【supervisorctl restart attend】进行重启")
+async def restart_frame(back_task: BackgroundTasks):
     global main_pid
     try:
         if platform.system() == 'Windows':
@@ -402,7 +405,7 @@ async def restart_fram(back_task: BackgroundTasks):
             p.terminate()
         else:
             os.system("ps aux | grep main.py | awk '{print $2}' | xargs kill -9")
-        back_task.add_task(run_fram)
+        # back_task.add_task(run_fram)
         return {"message": "restart successfully"}
     except Exception as e:
         HTTPException(
